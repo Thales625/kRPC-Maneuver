@@ -3,10 +3,7 @@ from time import sleep
 from math import exp, cos, radians
 from os import system
 
-from sys import path
-path.append('D:\Codes\www\Vector')
 from Vector import Vector3
-
 
 class Manuever:
     def __init__(self, node=None):
@@ -18,17 +15,19 @@ class Manuever:
         self.surface_ref = self.vessel.surface_reference_frame
         self.flight = self.vessel.flight(self.body_ref)
 
-
         # Streams
         self.stream_mass = self.conn.add_stream(getattr, self.vessel, "mass")
         self.stream_av_thrust = self.conn.add_stream(getattr, self.vessel, "available_thrust")
-        self.stream_ut = self.conn.add_stream(getattr, self.space_center, "ut")
+        #self.stream_ut = self.conn.add_stream(getattr, self.space_center, "ut")
+
+        # Params
+        min_dv = 0.05
 
         # Initializing
         node = self.vessel.control.nodes[0]
         if node is None:
             print('node not found')
-            return
+            exit()
         stream_node_time_to = self.conn.add_stream(getattr, node, 'time_to')
         stream_node_remaining_dv = self.conn.add_stream(getattr, node, 'remaining_delta_v')
 
@@ -38,17 +37,17 @@ class Manuever:
         self.vessel.auto_pilot.target_direction = (0, 1, 0)
         #self.vessel.auto_pilot.wait()
 
+        eIsp = 0
+        for engine in self.vessel.parts.engines:
+            if engine.active:
+                eIsp += engine.available_thrust / av_thrust * engine.specific_impulse
+        ve = eIsp * 9.82
+
         while True:
             # get streams
             av_thrust = self.stream_av_thrust()
             mass = self.stream_mass()
             #ut = self.stream_ut()
-
-            eIsp = 0
-            for engine in self.vessel.parts.engines:
-                if engine.active:
-                    eIsp += engine.available_thrust / av_thrust * engine.specific_impulse
-            ve = eIsp * 9.82
 
             dv = Vector3(stream_node_remaining_dv())
             dv_mag = dv.magnitude()
@@ -57,13 +56,12 @@ class Manuever:
             a0 = av_thrust / mass
             a1 = av_thrust / final_mass
 
-            # usar tBurning = (dv/a0 + dv/a1) / 2 <-- TESTAR
-            tBurning = (dv_mag/a0 + dv_mag/a1) / 2
+            t_burning = (dv_mag/a0 + dv_mag/a1) / 2
 
-            tNode = stream_node_time_to()
+            t_to_node = stream_node_time_to()
 
-            t_to_start = tNode - tBurning / 2
-            t_to_end = tNode + tBurning / 2
+            t_to_start = t_to_node - t_burning / 2
+            #t_to_end = t_to_node + t_burning / 2
             
             #ut_start = ut + t_to_start
             #ut_end = ut + t_to_end
@@ -79,7 +77,7 @@ class Manuever:
 
                 self.vessel.control.throttle = throttle * error_factor
 
-                if dv_mag <= 0.03:
+                if dv_mag <= min_dv:
                     self.vessel.control.throttle = 0
                     break
 
@@ -87,7 +85,7 @@ class Manuever:
             else:
                 print(f'Burn in: {t_to_start:.2f}')
 
-            sleep(0.03)
+            sleep(0.05)
 
 if __name__ == '__main__':
     Manuever()
