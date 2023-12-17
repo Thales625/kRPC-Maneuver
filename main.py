@@ -5,7 +5,7 @@ from os import system
 
 from Vector import Vector3
 
-class Manuever:
+class Maneuver:
     def __init__(self, node=None):
         self.conn = krpc.connect('Manuever')
         self.space_center = self.conn.space_center
@@ -88,4 +88,4 @@ class Manuever:
             sleep(0.05)
 
 if __name__ == '__main__':
-    Manuever()
+    Maneuver()
