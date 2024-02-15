@@ -3,7 +3,7 @@ from time import sleep
 from math import exp, cos, radians
 from os import system
 
-from Vector import Vector3
+from PyVecs import Vector3
 
 class Maneuver:
     def __init__(self, node=None):
